@@ -1,0 +1,13 @@
+app:
+  name: "aws-cdk-constructs"
+  environment: "dev" # dev | qa | prod
+  version: "0.0.1"
+
+configurations:
+  aws-profile: "default"
+  aws-account: "0000000000"
+  aws-region: "us-east-1"
+
+
+  
+
