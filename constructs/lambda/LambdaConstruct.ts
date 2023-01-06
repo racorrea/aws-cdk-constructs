@@ -1,5 +1,4 @@
-import { RestApi } from "aws-cdk-lib/aws-apigateway";
-import { ManagedPolicy, Role } from "aws-cdk-lib/aws-iam";
+import { Role } from "aws-cdk-lib/aws-iam";
 import { Architecture, Code, Function, Runtime } from "aws-cdk-lib/aws-lambda";
 import { Construct } from "constructs"
 import path = require('path');
@@ -20,15 +19,8 @@ export class LambdaConstruct extends Construct{
 
     constructor(scope: Construct, id: string, props?: ConstructProperties){
         super(scope, id);
-
-        // this.createLambdaFunction(props);
-        // props.role ? props.role.addManagedPolicy(ManagedPolicy.fromAwsManagedPolicyName("service-role/AWSLambdaBasicExecutionRole")) : undefined;
-
     }
 
-    /**
-     * Create Lambda Function
-     */
     public createLambdaFunction(props: ConstructProperties) {
         return new Function(this, props.functionName, {
             functionName: props.functionName,

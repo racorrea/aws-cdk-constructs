@@ -1,27 +1,40 @@
 import * as cdk from 'aws-cdk-lib';
-import { SecurityPolicy } from 'aws-cdk-lib/aws-apigateway';
+import { LambdaIntegration, SecurityPolicy } from 'aws-cdk-lib/aws-apigateway';
 import { Certificate } from 'aws-cdk-lib/aws-certificatemanager';
-import { Effect, PolicyStatement, Role, ServicePrincipal } from 'aws-cdk-lib/aws-iam';
-import { StringParameter } from 'aws-cdk-lib/aws-ssm';
+import { AttributeType } from 'aws-cdk-lib/aws-dynamodb';
+import { Role, ServicePrincipal } from 'aws-cdk-lib/aws-iam';
+import { ARecord, HostedZone, RecordTarget } from 'aws-cdk-lib/aws-route53';
+import { ApiGateway } from 'aws-cdk-lib/aws-route53-targets';
 import { Construct } from 'constructs';
-import { LambdaApiRestConstruct } from '../constructs/lambda/LambdaApiRestConstruct';
+import process = require('process');
+import { RestApiConstruct } from '../constructs/apigateway/RestApiConstruct';
+import { DynamoDBConstruct } from '../constructs/dynamodb/DynamoDBConstruct';
 import { LambdaConstruct } from '../constructs/lambda/LambdaConstruct';
-import { handler } from '../src/handler/HelloWorldHandler';
-import { StackVariables } from './buildConfig';
-// import * as sqs from 'aws-cdk-lib/aws-sqs';
+import { SPAConstruct } from '../constructs/spa/SPAConstruct';
 
 const LAMBDA_CODE_PATH = '../../src/handler';
-
+const METHOD_OPTIONS = {methodResponses: [{statusCode: '200'}, {statusCode: '400'}, {statusCode: '500'}]};
 
 export class Stack extends cdk.Stack {
   constructor(scope: Construct, id: string, props?: cdk.StackProps) {
     super(scope, id);
+
     
     let certificateArn = '';
+    let domainName = '';
+    let hostedZoneId = '';
     process.env?.CERTIFICATE_ARN ? certificateArn = process.env?.CERTIFICATE_ARN  : certificateArn = '';
-    // certificateArn = 'arn:aws:acm:us-east-1:756557892660:certificate/c06eb407-fd27-49a6-876d-b5b3abe4ea41';
+    process.env?.DOMAIN_NAME ? domainName = process.env?.DOMAIN_NAME  : domainName = '';
+    process.env?.HOSTED_ZONE_ID ? hostedZoneId = process.env?.HOSTED_ZONE_ID  : hostedZoneId = '';
+    // certificateArn = 'arn:aws:acm:us-east-1:756557892660:certificate/a3d3754d-79cb-4521-96d3-7797312ddf6f';
 
     const recordName = `api.${process.env.DOMAIN_NAME}`;
+    console.log('DOMAIN_NAME = ' + domainName);
+    const hostedZone = HostedZone.fromHostedZoneAttributes(this, domainName, {
+      zoneName: domainName,
+      hostedZoneId: hostedZoneId
+    });
+    
     const certificate = Certificate.fromCertificateArn(this, `${props?.stackName}-certificate-${process.env.ENV}`, certificateArn);
 
     //Create rol
@@ -38,25 +51,50 @@ export class Stack extends cdk.Stack {
       role: iamRole,
     });
 
-
-    // const helloWorldLambda = new LambdaConstruct(this, `${props?.stackName}-lambda-${process.env.ENV}`, {
-    //   functionName: `${props?.stackName}-lambda-${process.env.ENV}`,
-    //   handler: 'HelloWorldHandler.handler',
-    //   codePath: LAMBDA_CODE_PATH,
-    //   role: iamRole,
-    // });
-
-    
-    // Todo: test with pathParam ex.: 'GET /hello/{name}'
-    const helloWorldApiRest = new LambdaApiRestConstruct(this, `${props?.stackName}-lambda-restapi-${process.env.ENV}`, {
-      name: `${props?.stackName}-lambda-restapi-${process.env.ENV}`,
-      lambda: helloWorldLambda,
-      role: iamRole,
-      resource: 'api',
-      endpoints: [
-        'GET /hello', 'POST /hello',
-      ]
+    const helloWorldApiRest = new RestApiConstruct(this, `${props?.stackName}-restapi-${process.env.ENV}`).createApiRest({
+      name: `${props?.stackName}-restapi-${process.env.ENV}`,
+      domainName:{
+        domainName: recordName,
+        certificate: certificate,
+        securityPolicy: SecurityPolicy.TLS_1_2,
+        basePath: 'v1'
+      },
+      deployOptions: {
+        stageName: 'dev',
+        variables: {
+          REGION: process.env.AWS_PRIMARY_REGION,
+        }
+      }
     });
+
+    // Api Routes
+    const routes = helloWorldApiRest.root.addResource('demo');
+    routes.addMethod('GET', new LambdaIntegration(helloWorldLambda), METHOD_OPTIONS);
+    routes.addMethod('POST', new LambdaIntegration(helloWorldLambda), METHOD_OPTIONS);
+
+    const route = routes.addResource('{id}');
+    route.addMethod('GET', new LambdaIntegration(helloWorldLambda), METHOD_OPTIONS);
+
+    //create recordset
+    new ARecord(this, `${props?.stackName}-route53-${process.env.ENV}`, {
+      zone: hostedZone,
+      recordName: recordName,
+      target: RecordTarget.fromAlias(new ApiGateway(helloWorldApiRest)),
+    });
+    
+
+    // Implement DynamoDB Table
+    const table = new DynamoDBConstruct(this, `${props?.stackName}-dynamodb-${process.env.ENV}`).createDynamoDBTable({
+      tableName: `${props?.stackName}-table-${process.env.ENV}`,
+      partitionKey: {
+        name: "id",
+        type: AttributeType.STRING,
+      }
+    });
+
+    // Asign permissions for write in the table
+    table.grantReadWriteData(helloWorldLambda);
+
 
     
 

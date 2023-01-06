@@ -2,14 +2,15 @@
 import 'source-map-support/register';
 import * as cdk from 'aws-cdk-lib';
 import { Stack } from '../lib/stack';
+import { SpaStack } from '../lib/spa-stack';
 
 // require('dotenv').config({ path: `./.env.${process.env.NODE_ENV}` })
-const environment="development"
+const environment="dev"
 require('dotenv').config({ path: `./.env.${environment}` })
 
 const app = new cdk.App();
-const region = {
-    account: process.env.AWS_ACCOUNT_ID,
+const env = {
+    account: process.env.AWS_ACCOUNT_ID ?? process.env.CDK_DEFAULT_ACCOUNT,
     region: process.env.AWS_PRIMARY_REGION ?? process.env.CDK_DEFAULT_REGION
 }
 
@@ -19,8 +20,16 @@ if (!process.env?.CERTIFICATE_ARN) {
   throw new Error('Could not resolve certificate. Please pass it with the CERTIFICATE_ARN environment variable.');
 }
 
+console.log("ENV: ");
+console.log(env);
+
 
 new Stack(app, stackName, {
   stackName: `${process.env.NAME}-${environment}`,
-  env: region,
+  env: env,
+});
+
+new SpaStack(app, `${process.env.NAME}-spa-${environment}`, {
+  stackName: `${process.env.NAME}-spa-${environment}`,
+  env: env,
 });
