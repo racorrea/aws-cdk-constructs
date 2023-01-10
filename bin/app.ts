@@ -38,7 +38,10 @@ const testStack = new TestStack(app, stackName, {
 
 new Stage(app, 'DevStage');
 
-
+// only apply to resources of type Bucket
+cdk.Tags.of(testStack).add('object-group', 'test-bucket', {
+  includeResourceTypes: ['AWS::S3:Bucket'],
+});
 
 // new Stack(app, stackName, {
 //   stackName: `${process.env.NAME}-${environment}`,
