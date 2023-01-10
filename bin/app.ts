@@ -23,11 +23,32 @@ if (!process.env?.CERTIFICATE_ARN) {
   throw new Error('Could not resolve certificate. Please pass it with the CERTIFICATE_ARN environment variable.');
 }
 
-const testStack = new TestStack(app, stackName, {
+const testStackDev = new TestStack(app, `${stackName}-dev`, {
   stackName: stackName,
   env: env,
+  // 👇 enable termination protection
+  terminationProtection: false,
+  // enable
+  deploymentEnvironment: 'dev',
   tags:{
     environment: 'dev',
+    project: 'poc-aws-cdk',
+  },
+  synthesizer: new DefaultStackSynthesizer({
+    fileAssetsBucketName: `cdk-${stackName}-${env.region}-assets`,
+
+  }),
+});
+
+const testStackProd = new TestStack(app, `${stackName}-prod`, {
+  stackName: stackName,
+  env: env,
+  // 👇 enable termination protection
+  terminationProtection: true,
+  // enable
+  deploymentEnvironment: 'prod',
+  tags:{
+    environment: 'prod',
     project: 'poc-aws-cdk',
   },
   synthesizer: new DefaultStackSynthesizer({
@@ -39,7 +60,7 @@ const testStack = new TestStack(app, stackName, {
 new Stage(app, 'DevStage');
 
 // only apply to resources of type Bucket
-cdk.Tags.of(testStack).add('object-group', 'test-bucket', {
+cdk.Tags.of(testStackDev).add('object-group', 'test-bucket', {
   includeResourceTypes: ['AWS::S3:Bucket'],
 });
 
