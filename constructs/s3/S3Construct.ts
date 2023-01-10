@@ -7,6 +7,7 @@ export interface ConstructProperties {
     readonly bucketArn?: string;
     readonly removalPolicy?: RemovalPolicy;
     readonly autoDeleteObjects?: boolean;
+    readonly versioned?: boolean;
 }
 
 export class S3Construct extends Construct {
@@ -20,6 +21,7 @@ export class S3Construct extends Construct {
             bucketName: props.bucketName,
             removalPolicy: props.removalPolicy,
             autoDeleteObjects: props.autoDeleteObjects,
+            versioned: props.versioned,
         });
     }
 

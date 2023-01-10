@@ -20,34 +20,35 @@ export class TestStack extends cdk.Stack {
         const { deploymentEnvironment } = props;
         const isProduction = deploymentEnvironment === 'prod';
 
-        const bucket = new S3Construct(this, `${props?.stackName}-bucket-${process.env.ENV}`)
+        const bucket = new S3Construct(this, `${props?.stackName}-bucket`)
             .createBucket({
-                bucketName: `${props?.stackName}-bucket-${process.env.ENV}`,
+                bucketName: `${props?.stackName}-bucket`,
                 removalPolicy: isProduction ? RemovalPolicy.RETAIN : RemovalPolicy.DESTROY,
+                versioned: false,
             });
 
-        const lambda = new LambdaConstruct(this, `${props?.stackName}-lambda-${process.env.ENV}`)
-            .createLambdaFunction({
-                functionName: `${props?.stackName}-lambda-${process.env.ENV}`,
-                handler: 'HelloWorldHandler.handler',
-                codePath: LAMBDA_CODE_PATH,
-                stage: process.env.ENV ?? '',
-            });
+        // const lambda = new LambdaConstruct(this, `${props?.stackName}-lambda`)
+        //     .createLambdaFunction({
+        //         functionName: `${props?.stackName}-lambda`,
+        //         handler: 'HelloWorldHandler.handler',
+        //         codePath: LAMBDA_CODE_PATH,
+        //         stage: process.env.ENV ?? '',
+        //     });
 
-        //bucket.grantRead(helloWorldLambda);
+        // //bucket.grantRead(helloWorldLambda);
 
-        lambda.addToRolePolicy(new PolicyStatement({
+        // lambda.addToRolePolicy(new PolicyStatement({
 
-            actions: ['s3:GetObject', 's3:List*'],
-            resources: [
-                bucket.bucketArn,
-                bucket.arnForObjects('*'),
-            ]
-        }));
+        //     actions: ['s3:GetObject', 's3:List*'],
+        //     resources: [
+        //         bucket.bucketArn,
+        //         bucket.arnForObjects('*'),
+        //     ]
+        // }));
 
         // new CfnOutput(this, 'Output', {
         //     value: lambda.functionArn,
-        //     exportName: `${props?.stackName}-lambda-${process.env.ENV}-arn`,
+        //     exportName: `${props?.stackName}-lambda-arn`,
         //     description: 'ARN Hello world lambda'
         // });
     }

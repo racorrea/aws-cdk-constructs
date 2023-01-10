@@ -4,8 +4,11 @@ import * as cdk from 'aws-cdk-lib';
 import { Stack } from '../lib/stack';
 import { SpaStack } from '../lib/spa-stack';
 import { TestStack } from '../lib/test-stack';
-import { CfnOutput, DefaultStackSynthesizer, Stage } from 'aws-cdk-lib';
+import { ApplyTagsAspect } from "../aspects/ApplyTagsAspect";
+import { Aspects, CfnOutput, DefaultStackSynthesizer, Stage, Tags } from 'aws-cdk-lib';
 import { Role } from 'aws-cdk-lib/aws-iam';
+import { EnableBucketVersioning } from '../aspects/EnableBucketVersioningAspect';
+import { TagCheckerAspect } from '../aspects/TagCheckerAspect';
 
 // require('dotenv').config({ path: `./.env.${process.env.NODE_ENV}` })
 const environment = "dev"
@@ -19,11 +22,11 @@ const env = {
 
 const stackName = `${process.env.NAME}-stack-${environment}`;
 
-if (!process.env?.CERTIFICATE_ARN) {
-  throw new Error('Could not resolve certificate. Please pass it with the CERTIFICATE_ARN environment variable.');
-}
+// if (!process.env?.CERTIFICATE_ARN) {
+//   throw new Error('Could not resolve certificate. Please pass it with the CERTIFICATE_ARN environment variable.');
+// }
 
-const testStackDev = new TestStack(app, `${stackName}-dev`, {
+const testStackDev = new TestStack(app, stackName, {
   stackName: stackName,
   env: env,
   // 👇 enable termination protection
@@ -33,35 +36,37 @@ const testStackDev = new TestStack(app, `${stackName}-dev`, {
   tags:{
     environment: 'dev',
     project: 'poc-aws-cdk',
+    owner: 'racorrea'
   },
-  synthesizer: new DefaultStackSynthesizer({
-    fileAssetsBucketName: `cdk-${stackName}-${env.region}-assets`,
-
-  }),
+  // synthesizer: new DefaultStackSynthesizer({
+  //   fileAssetsBucketName: `cdk-${stackName}-${env.region}-assets`,
+  // }),
 });
 
-const testStackProd = new TestStack(app, `${stackName}-prod`, {
-  stackName: stackName,
-  env: env,
-  // 👇 enable termination protection
-  terminationProtection: true,
-  // enable
-  deploymentEnvironment: 'prod',
-  tags:{
-    environment: 'prod',
-    project: 'poc-aws-cdk',
-  },
-  synthesizer: new DefaultStackSynthesizer({
-    fileAssetsBucketName: `cdk-${stackName}-${env.region}-assets`,
+const appAspects = Aspects.of(app);
+appAspects.add(new EnableBucketVersioning());
+appAspects.add(new TagCheckerAspect(['owner']));
 
-  }),
-});
+// const testStackProd = new TestStack(app, `${stackName}-prod`, {
+//   stackName: stackName,
+//   env: env,
+//   // 👇 enable termination protection
+//   terminationProtection: true,
+//   // enable
+//   deploymentEnvironment: 'prod',
+//   tags:{
+//     environment: 'prod',
+//     project: 'poc-aws-cdk',
+//   },
+//   synthesizer: new DefaultStackSynthesizer({
+//     fileAssetsBucketName: `cdk-${stackName}-${env.region}-assets`,
 
-new Stage(app, 'DevStage');
+//   }),
+// });
 
 // only apply to resources of type Bucket
 cdk.Tags.of(testStackDev).add('object-group', 'test-bucket', {
-  includeResourceTypes: ['AWS::S3:Bucket'],
+  includeResourceTypes: ['AWS::S3::Bucket'],
 });
 
 // new Stack(app, stackName, {
@@ -73,3 +78,5 @@ cdk.Tags.of(testStackDev).add('object-group', 'test-bucket', {
 //   stackName: `${process.env.NAME}-spa-${environment}`,
 //   env: env,
 // });
+
+app.synth();
