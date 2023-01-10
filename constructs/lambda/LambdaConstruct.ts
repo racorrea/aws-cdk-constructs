@@ -1,3 +1,4 @@
+import { Tags } from "aws-cdk-lib";
 import { Role } from "aws-cdk-lib/aws-iam";
 import { Architecture, Code, Function, Runtime } from "aws-cdk-lib/aws-lambda";
 import { Construct } from "constructs"
@@ -11,7 +12,8 @@ export interface ConstructProperties {
     readonly environment?: any,
     readonly memorySize?: number,
     readonly logRetention?: any,
-    readonly tracing?: any
+    readonly tracing?: any,
+    readonly stage: string,
 }
 
 export class LambdaConstruct extends Construct {
@@ -22,7 +24,7 @@ export class LambdaConstruct extends Construct {
     }
 
     public createLambdaFunction(props: ConstructProperties) {
-        return new Function(this, props.functionName, {
+        const lambda = new Function(this, props.functionName, {
             functionName: props.functionName,
             handler: props.handler,
             code: Code.fromAsset(path.resolve(__dirname, props.codePath)),
@@ -34,6 +36,11 @@ export class LambdaConstruct extends Construct {
             logRetention: props.logRetention ? props.logRetention : undefined,
             tracing: props.tracing ? props.tracing : undefined,
         });
+
+        Tags.of(lambda).add('resource', 'lambda');
+        Tags.of(lambda).add('name', props.functionName);
+
+        return lambda;
     }
 
 
