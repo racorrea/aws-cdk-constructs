@@ -14,10 +14,10 @@ export interface ConstructProperties {
     readonly tracing?: any
 }
 
-export class LambdaConstruct extends Construct{
+export class LambdaConstruct extends Construct {
 
 
-    constructor(scope: Construct, id: string, props?: ConstructProperties){
+    constructor(scope: Construct, id: string, props?: ConstructProperties) {
         super(scope, id);
     }
 
@@ -36,6 +36,6 @@ export class LambdaConstruct extends Construct{
         });
     }
 
-    
+
 
 }
